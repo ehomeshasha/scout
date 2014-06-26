@@ -1,0 +1,199 @@
+#!/bin/bash
+# Author: zzy
+# Date: 2014.6.12
+# Description: startup file
+
+cygwin=false
+case "`uname`" in
+CYGWIN*) cygwin=true;;
+esac
+
+# resolve links - $0 may be a softlink
+THIS="$0"
+while [ -h "$THIS" ]; do
+  ls=`ls -ld "$THIS"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '.*/.*' > /dev/null; then
+    THIS="$link"
+  else
+    THIS=`dirname "$THIS"`/"$link"
+  fi
+done
+
+JAVA=$JAVA_HOME/bin/java
+JAVA_HEAP_MAX=-Xmx1000m
+
+# some directories
+THIS_DIR=`dirname "$THIS"`
+SCOUT_HOME=`cd "$THIS_DIR/.." ; pwd`
+
+# some Java parameters
+if [ "$SCOUT_JAVA_HOME" != "" ]; then
+  #echo "run java in $SCOUT_JAVA_HOME"
+  JAVA_HOME=$SCOUT_JAVA_HOME
+fi
+
+if [ "$JAVA_HOME" = "" ]; then
+  echo "Error: JAVA_HOME is not set."
+  exit 1
+fi
+
+JAVA=$JAVA_HOME/bin/java
+JAVA_HEAP_MAX=-Xmx3g
+
+# check envvars which might override default args
+if [ "$SCOUT_HEAPSIZE" != "" ]; then
+  echo "run with heapsize $SCOUT_HEAPSIZE"
+  JAVA_HEAP_MAX="-Xmx""$SCOUT_HEAPSIZE""m"
+  #echo $JAVA_HEAP_MAX
+fi
+
+if [ "x$SCOUT_CONF_DIR" = "x" ]; then
+  if [ -d $SCOUT_HOME/src/conf ]; then
+    SCOUT_CONF_DIR=$SCOUT_HOME/src/conf
+  else
+    if [ -d $SCOUT_HOME/conf ]; then
+      SCOUT_CONF_DIR=$SCOUT_HOME/conf
+    else
+      echo No SCOUT_CONF_DIR found
+    fi
+  fi
+fi
+
+# CLASSPATH initially contains $MAHOUT_CONF_DIR, or defaults to $MAHOUT_HOME/src/conf
+CLASSPATH=${CLASSPATH}:$SCOUT_CONF_DIR
+
+#if [ "$MAHOUT_LOCAL" != "" ]; then
+#  echo "MAHOUT_LOCAL is set, so we don't add HADOOP_CONF_DIR to classpath."
+#elif [ -n "$HADOOP_CONF_DIR"  ] ; then
+#  echo "MAHOUT_LOCAL is not set; adding HADOOP_CONF_DIR to classpath."
+CLASSPATH=${CLASSPATH}:$HADOOP_CONF_DIR
+#fi
+
+CLASSPATH=${CLASSPATH}:$JAVA_HOME/lib/tools.jar
+
+# add dev targets if they exist
+  #for f in $MAHOUT_HOME/target/mahout-examples-*-job.jar $MAHOUT_HOME/mahout-examples-*-job.jar ; do
+  #  CLASSPATH=${CLASSPATH}:$f;
+  #done
+
+# add release dependencies to CLASSPATH
+for f in $SCOUT_HOME/lib/mahout/*.jar; do
+  CLASSPATH=${CLASSPATH}:$f;
+done
+
+
+# add development dependencies to CLASSPATH
+for f in $SCOUT_HOME/target/dependency/*.jar; do
+  CLASSPATH=${CLASSPATH}:$f;
+done
+
+SCOUT_JAR=""
+for f in $SCOUT_HOME/target/*.jar; do
+  if [ "x${SCOUT_JAR}" = "x" ];then
+  	SCOUT_JAR=$f
+  else
+  	SCOUT_JAR=${SCOUT_JAR}:$f;
+  fi
+done
+
+CLASSPATH=${CLASSPATH}:$SCOUT_JAR;
+
+# cygwin path translation
+if $cygwin; then
+  CLASSPATH=`cygpath -p -w "$CLASSPATH"`
+fi
+
+
+# default log directory & file
+if [ "$SCOUT_LOG_DIR" = "" ]; then
+  SCOUT_LOG_DIR="$SCOUT_HOME/logs"
+fi
+if [ "$SCOUT_LOGFILE" = "" ]; then
+  SCOUT_LOGFILE='mahout.log'
+fi
+
+#Fix log path under cygwin
+if $cygwin; then
+  SCOUT_LOG_DIR=`cygpath -p -w "$SCOUT_LOG_DIR"`
+fi
+
+SCOUT_OPTS="$SCOUT_OPTS -Dhadoop.log.dir=$SCOUT_LOG_DIR"
+SCOUT_OPTS="$SCOUT_OPTS -Dhadoop.log.file=$SCOUT_LOGFILE"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.min.split.size=512MB"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.map.child.java.opts=-Xmx4096m"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.reduce.child.java.opts=-Xmx4096m"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.output.compress=true"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.compress.map.output=true"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.map.tasks=1"
+SCOUT_OPTS="$SCOUT_OPTS -Dmapred.reduce.tasks=1"
+SCOUT_OPTS="$SCOUT_OPTS -Dio.sort.factor=30"
+SCOUT_OPTS="$SCOUT_OPTS -Dio.sort.mb=1024"
+SCOUT_OPTS="$SCOUT_OPTS -Dio.file.buffer.size=32786"
+
+if [ "x$JAVA_LIBRARY_PATH" != "x" ]; then
+  SCOUT_OPTS="$SCOUT_OPTS -Djava.library.path=$JAVA_LIBRARY_PATH"
+fi
+
+#CLASS=org.apache.mahout.driver.MahoutDriver
+CLASS=ca.dealsaccess.scout.driver.ScoutDriver
+
+for f in $SCOUT_HOME/target/scout-*-SNAPSHOT.jar; do
+  if [ -e "$f" ]; then
+    SCOUT_JAR=$f
+  fi
+done
+
+# run it
+
+HADOOP_BINARY=$(PATH="${HADOOP_HOME:-${HADOOP_PREFIX}}/bin:$PATH" which hadoop 2>/dev/null)
+#if [ -x "$HADOOP_BINARY" ] ; then
+#  HADOOP_BINARY_CLASSPATH=$("$HADOOP_BINARY" classpath)
+#fi
+#
+#if [ ! -x "$HADOOP_BINARY" ] || [ "$MAHOUT_LOCAL" != "" ] ; then
+#  if [ ! -x "$HADOOP_BINARY" ] ; then
+#    echo "hadoop binary is not in PATH,HADOOP_HOME/bin,HADOOP_PREFIX/bin, running locally"
+#  elif [ "$MAHOUT_LOCAL" != "" ] ; then
+#    echo "MAHOUT_LOCAL is set, running locally"
+#  fi
+#    CLASSPATH="${CLASSPATH}:${MAHOUT_HOME}/lib/hadoop/*"
+#    case $1 in
+#    (classpath)
+#      echo $CLASSPATH
+#      ;;
+#    (*)
+#      exec "$JAVA" $JAVA_HEAP_MAX $MAHOUT_OPTS -classpath "$CLASSPATH" $CLASS "$@"
+#    esac
+#else
+  if [ "x$1" != "xlocal" ];then
+  	echo "Running on hadoop, using $HADOOP_BINARY and HADOOP_CONF_DIR=$HADOOP_CONF_DIR"
+  fi
+  if [ "$SCOUT_JAR" = "" ] ; then
+    echo "ERROR: Could not find scout-*-SNAPSHOT.jar in $SCOUT_HOME, please run 'mvn install' to create the jar file"
+    exit 1
+  else
+    case "$1" in
+    (hadoop)
+      shift
+      export HADOOP_CLASSPATH=${HADOOP_CLASSPATH}:$CLASSPATH
+      exec "$HADOOP_BINARY" "$@"
+      ;;
+    (classpath)
+      echo $CLASSPATH
+      ;;
+    (java)
+    	shift
+    	LOCAL_CLASSPATH=${HADOOP_CLASSPATH}:$CLASSPATH
+#    	echo $LOCAL_CLASSPATH
+    	echo "Running: $JAVA $JAVA_HEAP_MAX -classpath $LOCAL_CLASSPATH $@"
+    	exec "$JAVA" $JAVA_HEAP_MAX -classpath $LOCAL_CLASSPATH "$@"
+    	;;
+    (*)
+      export HADOOP_CLASSPATH=${HADOOP_CLASSPATH}:$CLASSPATH
+      echo "HADOOP_CLASSPATH: $HADOOP_CLASSPATH"
+      echo "Running: $HADOOP_BINARY $CLASS $@"
+      exec "$HADOOP_BINARY" $CLASS "$@"
+    esac
+  fi
+#fi
