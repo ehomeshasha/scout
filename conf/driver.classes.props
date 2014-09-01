@@ -1,5 +1,6 @@
 #Scout
 ca.dealsaccess.scout.export.LabelDeals = labeldeals : (Scout) Label deals then update the database
+ca.dealsaccess.scout.export.SampleLabel = samplelabel : (Scout) print Label results
 
 
 #Dealsaccess
