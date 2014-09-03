@@ -9,9 +9,10 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.util.CharArraySet;
+//import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.util.Version;
 
 import ca.dealsaccess.scout.utils.JsonUtils;
@@ -39,7 +40,7 @@ public class AnalyzerUtils {
 		try {
 			Collection<String> stopwordsList = Files.readLines(new File(stopwordsPath), Charset.forName("UTF-8"));
 			CharArraySet stopwordsSet = new CharArraySet(Version.LUCENE_CURRENT, stopwordsList, false);
-			analyzer = new DealsAnalyzer(Version.LUCENE_46, stopwordsSet);
+			analyzer = new DealsAnalyzer(Version.LUCENE_CURRENT, stopwordsSet);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);

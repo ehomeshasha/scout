@@ -16,6 +16,7 @@ import org.apache.mahout.utils.io.ChunkedWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Charsets;
 import com.google.common.io.Closeables;
 
 public class DealsAnalyzerFilter extends SequenceFilesFromDirectoryFilter {
@@ -27,9 +28,25 @@ public class DealsAnalyzerFilter extends SequenceFilesFromDirectoryFilter {
 	private Pattern TAB = Pattern.compile("\t");
 	
 	public DealsAnalyzerFilter(Configuration conf, String keyPrefix, Map<String, String> options, ChunkedWriter writer,
-			Charset charset, FileSystem fs) {
+			FileSystem fs) {
+		this(conf, keyPrefix, options, writer, Charsets.UTF_8, fs);
+	}
+	
+	
+	public DealsAnalyzerFilter(Configuration conf,
+            String keyPrefix,
+            Map<String, String> options, 
+            ChunkedWriter writer,
+            Charset charset,
+            FileSystem fs) {
 		super(conf, keyPrefix, options, writer, charset, fs);
 	}
+	
+//	
+//	public DealsAnalyzerFilter(Configuration conf, String keyPrefix, Map<String, String> options, ChunkedWriter writer, Charset charset,
+//			 FileSystem fs) {
+//		super(conf, keyPrefix, options, writer, charset, fs);
+//	}
 
 	@Override
 	protected void process(FileStatus fst, Path current) throws IOException {
@@ -41,8 +58,8 @@ public class DealsAnalyzerFilter extends SequenceFilesFromDirectoryFilter {
 			}
 			String dirPath = getPrefix() + Path.SEPARATOR + current.getName() + Path.SEPARATOR
 					+ fst.getPath().getName();
-			fs.listStatus(fst.getPath(), new DealsAnalyzerFilter(getConf(), dirPath, getOptions(), writer,
-					getCharset(), fs));
+			fs.listStatus(fst.getPath(), new DealsAnalyzerFilter(getConf(), dirPath, getOptions(), writer, getCharset(),
+					 fs));
 		} else {
 			if(fst.getPath().getName().equals("_SUCCESS")) {
 				return;

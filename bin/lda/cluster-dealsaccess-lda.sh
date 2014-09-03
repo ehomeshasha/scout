@@ -28,11 +28,12 @@ LDA_TOPICS_DIR=dealsaccess-lda-topics
 LDA_MODEL_DIR=dealsaccess-lda-model
 
 #import data from mysql to hdfs
-${SCOUT_HOME}/bin/sqoop_mysql_dumper.sh
+#${SCOUT_HOME}/bin/sqoop_mysql_dumper.sh
 
 #seqdirectory
 hadoop dfs -rmr ${WORK_DIR}/${SEQ_DIR}
-$SCOUT seqdirectory -i ${WORK_DIR}/${DATASET_DIR} -o ${WORK_DIR}/${SEQ_DIR} -c UTF-8 -chunk 64 -ow -xm sequential --fileFilterClass ca.dealsaccess.scout.analyzer.DealsAnalyzerFilter
+$SCOUT seqdirectory -i ${WORK_DIR}/${DATASET_DIR} -o ${WORK_DIR}/${SEQ_DIR} -c UTF-8 -chunk 64 -ow -filter ca.dealsaccess.scout.analyzer.DealsAnalyzerFilter
+#mahout seqdirectory -i ${WORK_DIR}/${DATASET_DIR} -o ${WORK_DIR}/${SEQ_DIR} -c UTF-8 -chunk 64 -ow -xm sequential --fileFilterClass ca.dealsaccess.scout.analyzer.DealsAnalyzerFilter
 
 #seq2sparse
 hadoop dfs -rmr ${WORK_DIR}/${SEQ2SPARSE_DIR}

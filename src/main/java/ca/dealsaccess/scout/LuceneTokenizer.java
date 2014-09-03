@@ -12,10 +12,11 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.util.CharArraySet;
+//import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.util.Version;
 
 import com.google.common.base.Strings;
@@ -46,7 +47,7 @@ public class LuceneTokenizer {
 		CharArraySet stopwordsSet = new CharArraySet(Version.LUCENE_CURRENT, stopwordsList, false);
 		
 		
-		Analyzer analyzer = new DealsAnalyzer(Version.LUCENE_46, stopwordsSet);
+		Analyzer analyzer = new DealsAnalyzer(Version.LUCENE_CURRENT, stopwordsSet);
 		
 		
 		File file = new File(testFilePath);

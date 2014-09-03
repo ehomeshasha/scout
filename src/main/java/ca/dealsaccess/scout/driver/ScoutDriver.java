@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ca.dealsaccess.scout.driver;
 
 import java.io.IOException;
@@ -15,7 +32,57 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * General-purpose driver class for Scout programs.
+ * General-purpose driver class for Mahout programs.  Utilizes org.apache.hadoop.util.ProgramDriver to run
+ * main methods of other classes, but first loads up default properties from a properties file.
+ * <p/>
+ * To run locally:
+ *
+ * <pre>$MAHOUT_HOME/bin/mahout run shortJobName [over-ride ops]</pre>
+ * <p/>
+ * Works like this: by default, the file "driver.classes.props" is loaded from the classpath, which
+ * defines a mapping between short names like "vectordump" and fully qualified class names.
+ * The format of driver.classes.props is like so:
+ * <p/>
+ *
+ * <pre>fully.qualified.class.name = shortJobName : descriptive string</pre>
+ * <p/>
+ * The default properties to be applied to the program run is pulled out of, by default, "<shortJobName>.props"
+ * (also off of the classpath).
+ * <p/>
+ * The format of the default properties files is as follows:
+ * <pre>
+  i|input = /path/to/my/input
+  o|output = /path/to/my/output
+  m|jarFile = /path/to/jarFile
+  # etc - each line is shortArg|longArg = value
+ </pre>
+ *
+ * The next argument to the Driver is supposed to be the short name of the class to be run (as defined in the
+ * driver.classes.props file).
+ * <p/>
+ * Then the class which will be run will have it's main called with
+ *
+ *   <pre>main(new String[] { "--input", "/path/to/my/input", "--output", "/path/to/my/output" });</pre>
+ *
+ * After all the "default" properties are loaded from the file, any further command-line arguments are taken in,
+ * and over-ride the defaults.
+ * <p/>
+ * So if your driver.classes.props looks like so:
+ *
+ * <pre>org.apache.mahout.utils.vectors.VectorDumper = vecDump : dump vectors from a sequence file</pre>
+ *
+ * and you have a file core/src/main/resources/vecDump.props which looks like
+ * <pre>
+  o|output = /tmp/vectorOut
+  s|seqFile = /my/vector/sequenceFile
+  </pre>
+ *
+ * And you execute the command-line:
+ *
+ * <pre>$MAHOUT_HOME/bin/mahout run vecDump -s /my/otherVector/sequenceFile</pre>
+ *
+ * Then org.apache.mahout.utils.vectors.VectorDumper.main() will be called with arguments:
+ *   <pre>{"--output", "/tmp/vectorOut", "-s", "/my/otherVector/sequenceFile"}</pre>
  */
 public final class ScoutDriver {
 
@@ -26,6 +93,8 @@ public final class ScoutDriver {
 
   public static void main(String[] args) throws Throwable {
 
+    ProgramDriver programDriver = new ProgramDriver();
+
     Properties mainClasses = loadProperties("driver.classes.props");
     if (mainClasses == null) {
       mainClasses = loadProperties("driver.classes.default.props");
@@ -35,7 +104,6 @@ public final class ScoutDriver {
     }
 
     boolean foundShortName = false;
-    ProgramDriver programDriver = new ProgramDriver();
     for (Object key :  mainClasses.keySet()) {
       String keyString = (String) key;
       if (args.length > 0 && shortName(mainClasses.getProperty(keyString)).equals(args[0])) {
@@ -53,7 +121,6 @@ public final class ScoutDriver {
 
     if (args.length < 1 || args[0] == null || "-h".equals(args[0]) || "--help".equals(args[0])) {
       programDriver.driver(args);
-      return;
     }
 
     String progName = args[0];
@@ -128,13 +195,12 @@ public final class ScoutDriver {
     programDriver.driver(argsList.toArray(new String[argsList.size()]));
 
     if (log.isInfoEnabled()) {
-      log.info("Program took {} ms (Minutes: {})", System.currentTimeMillis() - start,
-          (System.currentTimeMillis() - start) / 60000.0);
+      log.info("Program took {} ms (Minutes: {})", System.currentTimeMillis() - start, (System.currentTimeMillis() - start)/60000.0);
     }
   }
 
   private static boolean isDeprecated(Properties mainClasses, String keyString) {
-    return "deprecated".equalsIgnoreCase(shortName(mainClasses.getProperty(keyString)));
+    return shortName(mainClasses.getProperty(keyString)).equalsIgnoreCase("deprecated");
   }
 
   private static Properties loadProperties(String resource) throws IOException {
@@ -145,7 +211,7 @@ public final class ScoutDriver {
         properties.load(propsStream);
         return properties;
       } finally {
-        Closeables.close(propsStream, true);
+        Closeables.closeQuietly(propsStream);
       }
     }
     return null;
